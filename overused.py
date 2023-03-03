@@ -109,6 +109,7 @@ tests = {
     'Prince Opal Lee Prints a pulley' : 'should NOT be removed',
     #REMOVE
     'Cruz''s cruise crews'' cruze' : 'should be removed',
+    'Crews in Cruzs cruise cruise in Cruise''s Cruze' : 'should be removed',
     #REMOVE
     'ajar Jar-Jar jars jars' : 'should be removed',
     #REMOVE

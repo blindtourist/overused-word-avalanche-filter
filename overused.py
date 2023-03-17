@@ -149,7 +149,18 @@ tests = {
     #REMOVE
     'Putin, poutine, or a poo-tin.' : 'should be removed',
      'Putin\'s poutine' : 'should be removed',
-    'carrion carry-on.' : 'should be removed'
+    #REMOVE
+    'carrion carry-on.' : 'should be removed',
+    #OK
+    'carry on my wayward son.  Carrie yawn my whey word sun' : 'should NOT be removed',
+    #REMOVE
+    'pass the pasta pastor' : 'should be removed',
+    #OK
+    'past tense pass stir pass tents past her' : 'should NOT be removed',
+    #REMOVE
+    'tyson''s tie sons' : 'should be removed',
+    #OK
+    'tyson chicken ties sun chick hen' : 'should NOT be removed'
 }
 
 patterns = [
@@ -224,7 +235,11 @@ patterns = [
     #Any avalanches involving Putin, poutine, or a poo-tin.
     '^(?=(.*p(u|oo|ou)\W*?tin)){2,}',
     #Any avalanches involving a carrion carry-on.
-    '^(?=(carr[iy]\W*?on)){2,}'
+    '^(carr[iy]\W*?on\s*){2,}',
+    #Avalanches that involve pastors passing pastas, pastures, past hers, etc.
+    '(Pas(s|ta|(s\s+the)|(t\s+her))\s*){2,}',
+    #All variations including Mike Tyson, his ties, his son, and with or without a popular tropical drink at hand
+    '((ty|tie|thai)\s?son.?s?\s*){2,}'
 ]
 
 passcount = 0

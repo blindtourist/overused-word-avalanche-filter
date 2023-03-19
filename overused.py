@@ -160,7 +160,12 @@ tests = {
     #REMOVE
     'tyson''s tie sons' : 'should be removed',
     #OK
-    'tyson chicken ties sun chick hen' : 'should NOT be removed'
+    'tyson chicken ties sun chick hen' : 'should NOT be removed',
+    #REMOVE
+    'This guy''s disc eyes' : 'should be removed',
+    'This guy''s disguise' : 'should be removed',
+    #OK
+    'Buy this guy''s bi disguise' : 'should NOT be removed'
 }
 
 patterns = [
@@ -239,7 +244,9 @@ patterns = [
     #Avalanches that involve pastors passing pastas, pastures, past hers, etc.
     '(Pas(s|ta|(s\s+the)|(t\s+her))\s*){2,}',
     #All variations including Mike Tyson, his ties, his son, and with or without a popular tropical drink at hand
-    '((ty|tie|thai)\s?son.?s?\s*){2,}'
+    '((ty|tie|thai)\s?son.?s?\s*){2,}',
+    #Any avalanche about "this guy", disk eyes, or a disguise
+    '((this\s+guy(''s)?|dis[ck]\s+(eyes|ice)|disguise)\s*){2,}'
 ]
 
 passcount = 0

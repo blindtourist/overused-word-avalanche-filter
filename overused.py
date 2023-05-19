@@ -1,4 +1,5 @@
 import re
+import subprocess
 
 tests = {
     #REMOVE
@@ -97,7 +98,7 @@ tests = {
     'Policemen police men' : 'should be removed',
     #OK
     'Police police' : 'should NOT be removed',
-    'swarming policemen police men swore Ming' : 'should NOT be removed',
+    'swarming policemen swore Ming police men' : 'should NOT be removed',
     #REMOVE
     'Snowden''s snowed in' : 'should be removed',
     'Snowed-in Snowden' : 'should be removed',
@@ -168,95 +169,115 @@ tests = {
     'Buy this guy''s bi disguise' : 'should NOT be removed'
 }
 
-patterns = [
-    #"Buffalo buffalo Buffalo buffalo buffalo buffalo Buffalo buffalo."
-    '(buffalo\W*){2,}',
-    #"joint support for joint support for joint support for the bipolar bi-polar bi polar bear"
-    '^(?=(.*joint\W+support){2,})',
-    '^(?=(.*bi\W*polar){2,})',
-    #"Legless Lego Legolas' Lego Lass' Lego Lasso"
-    '((legless|legolas|lego\W+lass)\W*){2,}',
+patternTuples = [
+    #"Buffalo buffalo Buffalo buffalo buffalo buffalo Buffalo buffalo"
+    ('(buffalo\W*){2,}','Buffalo buffalo Buffalo buffalo buffalo buffalo Buffalo buffalo'),
+    #"joint support for joint support for joint support for the bipolar bi-polar bi polar bear" 
+    ('(joint\W*support\W*.*?){2,}','joint support for joint support'),
+    ('(bi\W*polar(\W*bear)?\W*){2,}','bipolar bi-polar bi polar bear'),
+    #"Legless Lego Legolas' Lego Lass' Lego Lasso" 
+    ('((legless|legolas|lego\W+lass)\W*){2,}','Legless Lego Legolas\' Lego Lass\' Lego Lasso'),
     #"A shipping ship shipping shipping ships"
-    '(?=(.*(shipping)){3,})|(shipping\W*){2,}',
-    '((shipping\Wships)\W*){2,}',
+    ('(ship(ping|s)\W*){2,}','A shipping ship shipping shipping ships'),
     #"Fish and And and And and Chips", or any of its variants. We've done it to death.
-    '(and\W*){3,}',
+    ('(and\W*){3,}','Fish and And and And and Chips'),
     #"Liam Neeson sneezes on his niece's knees on Es on a Nissan, onii-san~~"
-    '((neeson|sneezes?\W+on|knees\W+on|nissan)\W*){2,}',
-    #"James, while John had had "had", had had "had had". "Had had" had had a better effect on the teacher."
-    '(had\W*){3,}',
-    #"One-one won one race, Two-two won one too." Also to include variations with "Juan".
-    '(one|juan)\W+won\W+one',
-    #"Awful lawful offal falafel waffles". We've done this to death too.
-    '((awful|lawful|offal|falafel|waffle)\W*){2,}',
-    #"Rhabarberbarbara"
-    'Rhabarberbarbara',
-    #"Low-Cal Calzone Zone". Done to death.
-    '((calzone|cal|zone)\s*){2,}',
+    ('((neeson|sneezes?\W+on|knees\W+on|nissan)\W*){2,}','Liam Neeson sneezes on his niece\'s knees on Es on a Nissan, onii-san'),
+    #"James, while John had had "had", had had "had had". "Had had" had had a better effect on the teacher."  
+    ('(had\W*){3,}', '\'Had had\' had had a better effect on the teacher.'),
+    #"One-one won one race, Two-two won one too." Also to include variations with "Juan". 
+    ('(one|juan)\W+won\W+one','One-one won one race'),
+    ('((one|won)\W*(two|too){2,})', 'Tutu won one too.'),
+    #"Awful lawful offal falafel waffles". We've done this to death too. 
+    ('((awful|lawful|offal|falafel|waffle)\W*){2,}','Awful lawful offal falafel waffles'),
+    #"Rhabarberbarbara" 
+    ('Rhabarberbarbara','Rhabarberbarbara'),
+    #"Low-Cal Calzone Zone". Done to death. 
+    ('((calzone|cal|zone)\s*){2,}','Low-Cal Calzone Zone'),
     #"Real eyes realize real lies"
-    '((Real eyes|realize|real lies)\W*){2,}',
+    ('((Real eyes|realize|real lies)\W*){2,}','Real eyes realize real lies'),
     #"Condescending con descending". Done to death.
-    '((Condescending|con\W+descending)\W*){2,}',
+    ('((Condescending|con\W+descending)\W*){2,}','Condescending con descending'),
     #Anything pertaining to Will's last testament (especially if his last name is Reed). We've had way too many variations on the theme!
-    '((Will\W*Re[ea]d)\W*){2,}',
-    '((Will)\W*){3,}',
+    ('((Will\W*Re[ea]d)\W*){2,}|((Will)\W*){3,}','Will Reed read Will\'s will?'),
     #Anything pertaining to Will Smith. Done to death.
-    '^(?=(.*will){2,})(?=(.*smith){2,})',
+    ('(((will|smith)\W*(will|smith)).*?){2,}','Will Smith will smith'),
     #"My micro Mike Row crow's mic row rows my micro Mike Rowe crow."
-    '((Micro|mike row|mic crow|mic row|mike crow)\W*){2,}',
+    ('((Micro|mike row|mic crow|mic row|mike crow)\W*){2,}','My micro Mike Row crow\'s mic row rows my micro Mike Rowe crow.'),
     #"Police police police police police". Done to death.
-    '(police\W*){3,}',
-    '^(\W*police\W*men\W*){2,}',
+    ('(police\W*){3,}|(\W*police\W*men\W*){2,}','Police police police police police'),
     #Anything about Edward Snowden's makeshift igloo.
-    '^(?=(.*(Snowden|snowed\W*in)){2,})',
+    ('^(?=(.*(Snowden|snowed\W*in)){2,})','Snowden\'s snowed in'),
     #Anything about the death of Prince.
-    '((Prince\W*died|prints\W*dyed|dyed\W*prints)\W*){2,}',
+    ('((Prince\W*died|prints\W*dyed|dyed\W*prints)\W*){2,}','Prince dyed prints, died'),
     #Anything about Senator Cruz's cruise ship, his crews, his Cruze, or his friend Tom Cruise.
-    '^(?=(.*(Cruise|crew.?s|cruze?)){3,})',
+    ('((Cruise|crew.?s|cruze?).*?){3,}','Cruz crews cruise'),
     #Please, no more ajar Jar-Jar jars!
-    '((jar\W*jar|a?jar)\W*){3,}',
+    ('((jar\W*jar|a?jar)\W*){3,}','Jar-Jar\'s jar\ss ajar'),
     #"Reservation reservation reservation". If you're going to use this, you better get far more creative with it.
-    '(reservations?\W*){2,}',
+    ('(reservations?\W*){2,}','Reservation reservation reservation'),
     #Anything about Jack Black's blackjack, him being secretly black, or him eating Cracker Jacks.
-    '((black\W*jack\W*s?|jack\W*black\W*s?)\W*){2,}',
+    ('((black\W*jack\W*s?|jack\W*black\W*s?)\W*){2,}','Jack Black\'s blackjack'),
     #Either of the two E*TRADE commercials we currently know about.
-    '(((re-?)?tir(e[ds]?|ing))\W*){3,}',
-    '((in\W*vests?)\W*){2,}',
+    ('(((re-?)?tir(e[ds]?|ing))\W*){3,}','Re-tire tired tires'),
+    ('((in\W*vests?)\W*){2,}','Invest in vests'),
     #"Caesar sees her seize her seizure."
-    '((Ceasar|seizure|seize\W*her)\W*){2,}',
+    ('((Ceasar|seizure|seize\W*her)\W*){2,}','Caesar sees her seize her seizure.'),
     #"Bear Grylls, bare, grills bare-grills bears" or anything else involving him and bears cooking in various states of undress.
-    '^(?=.*((bear|bare)\W*gr[yi]lls|gr[iy]lls\W*(bear|bare))\W*){2,}',
+    ('(((bear|bare)\W*gr[yi]lls|gr[iy]lls\W*(bear|bare))\W*){2,}','Bear Grylls, bare, grills bare-grills bears'),
     #Anything involving Link, links, and Linkin' Park parking their Lincoln in Lincoln Park.
-    '((l(ink|ynx)(in|s)?)\W*){3,}',
-    '^(?=.*(linkin\W*park|lincoln)){2,}',
+    ('((l(ink|ynx)(in|s)?)\W*){3,}','Link links lynx'),
+    ('(?=.*(linkin\W*park|lincoln)){2,}', 'Linkin\' Park parked their Lincoln in Lincoln Park.'),
     #Please, no more submissions regarding the XBox One X. Unless they're really really long.
-    'xbox\W*one\W*x',
+    ('xbox\W*one\W*x','One XBox One X'),
     #"Complex complex complex" or similar.
-    '((complex)\W*){2,}',
+    ('((complex)\W*){2,}','Complex complex complex'),
     #"A noisy noise annoys an oyster" and any of it's many boisterous variants.
-    '((nois[ey]|annoys|an\W*oyster)\W*){3,}',
+    ('((nois[ey]|annoys|an\W*oyster)\W*){3,}','A noisy noise annoys an oyster'),
     #Any avalanches using "enemy anemone" as a repeating unit.
-    '(enemy.*?anemone)|(anemone.*?enemy)',
+    ('(enemy.*?anemone)|(anemone.*?enemy)','an enemy anemone'),
     #Any avalanches involving Putin, poutine, or a poo-tin.
-    '^(?=(.*p(u|oo|ou)\W*?tin)){2,}',
+    ('((p(u|oo|ou)\W*?tin).?s?\W*){2,}','Putin put poutine in a poo-tin.'),
     #Any avalanches involving a carrion carry-on.
-    '^(carr[iy]\W*?on\s*){2,}',
+    ('(carr[iy]\W*?on\s*){2,}','carrion carry-on'),
     #Avalanches that involve pastors passing pastas, pastures, past hers, etc.
-    '(Pas(s|ta|(s\s+the)|(t\s+her))\s*){2,}',
+    ('(Pas(s|ta|(s\s+the)|(t\s+her))\s*){2,}','pastor passed a pasta past her pasture'),
     #All variations including Mike Tyson, his ties, his son, and with or without a popular tropical drink at hand
-    '((ty|tie|thai)\s?son.?s?\s*){2,}',
+    ('((ty|tie|thai)\s?son.?s?\s*){2,}','Mike Tyson ties Thai son'),
     #Any avalanche about "this guy", disk eyes, or a disguise
-    '((this\s+guy(''s)?|dis[ck]\s+(eyes|ice)|disguise)\s*){2,}'
+    ('((this\s+guy(''s)?|dis[ck]\s+(eyes|ice)|disguise)\s*){2,}','this guy\'s disk eyes disguise')
 ]
 
 passcount = 0
 for test, result in tests.items():
     verdict = "should NOT be removed"
-    for pattern in patterns:
+    for patternTuple in patternTuples:
+        pattern = patternTuple[0]
         if re.search(pattern, test, re.IGNORECASE):
             verdict = "should be removed"
     if verdict == result:
         passcount += 1
     else:
-        print('FAILED TEST   "' + test + '"')
-print(str(passcount) + ' of ' + str(len(tests)) + ' tests passed')
+        print('FAILED TEST   "' + test + '" ' + result)
+
+if passcount != len(tests):
+    print(str(passcount) + ' of ' + str(len(tests)) + ' tests passed')
+    quit()
+
+#All tests passed.  Output filters.
+
+filters = '' 
+for patternTuple in patternTuples:
+    f = '---\n'\
+        '    # Overused Avalanche Filter for: "' + patternTuple[1] + '"\n'\
+        '    type: text submission\n'\
+        '    body (includes, regex): [\'' + patternTuple[0] + '\']\n'\
+        '    moderators_exempt: false\n'\
+        '    action: filter\n'\
+        '    comment: This post appears to be similar to the overused avalanche "' + patternTuple[1] + '". '\
+        'Please refer to [Rule 11](https://www.reddit.com/r/WordAvalanches/wiki/index#wiki_11._overused_avalanches) '\
+        'of "What Not to Post" in our wiki.  The moderation team is always working to improve the automoderator rules '\
+        'and your submission will still be reviewed by a human moderator to ensure accuracy.\n'\
+        '    action_reason: "Overused Avalanche."\n\n'
+    filters += f
+print(filters)
